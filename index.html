@@ -393,7 +393,7 @@
             }
         });
 
-        aiReadingBtn.addEventListener('click', () => {
+        aiReadingBtn.addEventListener('click', async () => {
             let consultation = consultationSelect.value;
             if (consultation === 'other') {
                 consultation = document.getElementById('custom-question').value.trim();
@@ -403,9 +403,74 @@
                 }
             }
 
+            // 結果エリアを表示して「鑑定中...」にする
             resultBox.classList.remove('hidden');
-            resultDisplay.textContent = `【ご相談・テーマ】\n${consultation}\n\n【引いた数秘タロットカード】\n1枚目: ${drawnCards[0].name}\n2枚目: ${drawnCards[1].name}\n3枚目: ${drawnCards[2].name}\n\n（ここから下に、Gemini APIを呼び出して詳細なタロット鑑定文を表示させることができます！）`;
+            resultDisplay.textContent = '【ご相談・テーマ】\n' + consultation + '\n\n【引いた数秘タロットカード】\n' +
+                '1枚目: ' + drawnCards[0].name + '（キーワード: ' + drawnCards[0].keywords.join(', ') + '）\n' +
+                '2枚目: ' + drawnCards[1].name + '（キーワード: ' + drawnCards[1].keywords.join(', ') + '）\n' +
+                '3枚目: ' + drawnCards[2].name + '（キーワード: ' + drawnCards[2].keywords.join(', ') + '）\n\n' +
+                '✨ Gemini AIが心を込めて鑑定しています...しばらくお待ちください ✨';
             resultBox.scrollIntoView({ behavior: 'smooth' });
+
+            // AIへのプロンプト（指示文）を組み立てる
+            const prompt = `あなたはプロの数秘タロット占い師です。以下の相談内容と、ユーザーが引いた3枚の数秘タロットカードの情報を元に、深みと洞察力のある詳細な鑑定文を作成してください。
+
+【相談内容・テーマ】
+${consultation}
+
+【引いた3枚のカード（過去・現在・未来、あるいは多角的な視点として解釈してください）】
+1枚目: ${drawnCards[0].name}
+- キーワード: ${drawnCards[0].keywords.join(', ')}
+- 意味: ${drawnCards[0].meaning}
+
+2枚目: ${drawnCards[1].name}
+- キーワード: ${drawnCards[1].keywords.join(', ')}
+- 意味: ${drawnCards[1].meaning}
+
+3枚目: ${drawnCards[2].name}
+- キーワード: ${drawnCards[2].keywords.join(', ')}
+- 意味: ${drawnCards[2].meaning}
+
+【鑑定の構成案】
+1. 全体的なインプレッション（3枚が揃ったことの象徴的な意味）
+2. 各カードの深い読み解き（1枚目、2枚目、3枚目がそれぞれのポジションや文脈で何を伝えているか）
+3. 相談者への具体的なアドバイスとあたたかいエール
+
+専門的でありながら、相談者の心に寄り添うような、神秘的で優雅なトーンで日本語で回答してください。`;
+
+            try {
+                // サーバーの /api/reading エンドポイントに POST リクエストを送信
+                const response = await fetch('/api/reading', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ prompt: prompt })
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.error || '鑑定の生成に失敗しました。');
+                }
+
+                // Geminiからの応答テキストを取り出す
+                // (構造: data.candidates[0].content.parts[0].text)
+                const aiText = data.candidates?.[0]?.content?.parts?.[0]?.text || '鑑定結果を取得できませんでした。';
+
+                // 画面に綺麗に反映
+                resultDisplay.textContent = '【ご相談・テーマ】\n' + consultation + '\n\n' +
+                    '【引いた数秘タロットカード】\n' +
+                    '1枚目: ' + drawnCards[0].name + '\n' +
+                    '2枚目: ' + drawnCards[1].name + '\n' +
+                    '3枚目: ' + drawnCards[2].name + '\n\n' +
+                    '━━━━━━━━━━━━━━━━━━━\n' +
+                    '🔮 Gemini AI タロット鑑定結果\n' +
+                    '━━━━━━━━━━━━━━━━━━━\n\n' + aiText;
+
+            } catch (error) {
+                resultDisplay.textContent = 'エラーが発生しました: ' + error.message;
+            }
         });
 
         initDeck();

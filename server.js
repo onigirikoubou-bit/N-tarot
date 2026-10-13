@@ -7,6 +7,14 @@ const PORT = process.env.PORT || 3000;
 // JSONのボディパーサー
 app.use(express.json());
 
+// ★ 追加：CORS（クロスドメイン）を許可する設定
+app.use((req, res, next) => {
+    res.setHeader('Access-Control-Allow-Origin', 'https://onigirikoubou-bit.github.io');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+    next();
+});
+
 // 同一階層の静的ファイル（index.html, manifest.json 等）を配信
 app.use(express.static(path.join(__dirname)));
 

@@ -16,7 +16,7 @@
             padding: 20px;
             min-height: 100vh;
         }
-        /* タイトルをクリック可能にし、ホバー時に少し色が変わるように演出 */
+        /* タイトルクリックで初期状態（リセット）に */
         h1 {
             text-align: center;
             color: #2c3e50;
@@ -260,7 +260,7 @@
                 <div class="deck-shadow-1"></div>
                 <div class="card-back"></div>
             </div>
-            <div id="deck-status" style="font-size: 13px; color: #475569; margin-bottom: 10px; font-weight: bold;">カードを引いてください (0 / 3枚)</div>
+            <div id="deck-status" style="font-size: 13px; color: #475569; margin-bottom: 10px; font-weight: bold;">カードを引いてください (0 / 最大3枚)</div>
 
             <div class="cards-display-area" id="cards-display"></div>
         </div>
@@ -268,15 +268,6 @@
         <!-- 右側：相談内容の選択 -->
         <div class="right-area">
             <div style="font-weight: bold; font-size: 15px; margin-bottom: 12px; border-bottom: 2px solid #e2e8f0; padding-bottom: 6px; color: #1e293b;">鑑定設定</div>
-            
-            <div class="form-group">
-                <label for="draw-count-select">引く枚数の選択</label>
-                <select id="draw-count-select">
-                    <option value="1">1枚引き（シンプル・メッセージ）</option>
-                    <option value="2">2枚引き（二面性・選択）</option>
-                    <option value="3" selected>3枚引き（過去・現在・未来）</option>
-                </select>
-            </div>
 
             <div class="form-group">
                 <label for="consultation-select">相談内容を選択</label>
@@ -347,35 +338,26 @@
 
         let drawnCards = [];
         let clickCount = 0;
-        let maxDraws = 3;
+        const maxDraws = 3; // 最大3枚まで
         let shuffledDeck = [];
 
         const appTitle = document.getElementById('app-title');
         const deckBtn = document.getElementById('deck-btn');
         const deckStatus = document.getElementById('deck-status');
         const cardsDisplay = document.getElementById('cards-display');
-        const drawCountSelect = document.getElementById('draw-count-select');
         const consultationSelect = document.getElementById('consultation-select');
         const customGroup = document.getElementById('custom-question-group');
         const aiReadingBtn = document.getElementById('ai-reading-btn');
         const resultBox = document.getElementById('result-box');
         const resultDisplay = document.getElementById('result-display');
 
-        // ① タイトルをクリックしたら初期状態（リセット）にする
+        // タイトルをクリックしたら初期状態（リセット）にする
         appTitle.addEventListener('click', () => {
-            drawCountSelect.value = "3";
-            maxDraws = 3;
             consultationSelect.value = "過去・現在・未来";
             customGroup.classList.add('hidden');
             document.getElementById('custom-question').value = '';
             initDeck();
             window.scrollTo({ top: 0, behavior: 'smooth' });
-        });
-
-        // 枚数選択が変わったときのリセット処理
-        drawCountSelect.addEventListener('change', (e) => {
-            maxDraws = parseInt(e.target.value);
-            initDeck();
         });
 
         consultationSelect.addEventListener('change', (e) => {
@@ -394,7 +376,7 @@
             resultBox.classList.add('hidden');
             aiReadingBtn.disabled = true;
             deckBtn.style.pointerEvents = 'auto';
-            deckStatus.textContent = `カードを引いてください (0 / ${maxDraws}枚)`;
+            deckStatus.textContent = `カードを引いてください (0 / 最大${maxDraws}枚)`;
         }
 
         deckBtn.addEventListener('click', () => {
@@ -404,7 +386,7 @@
             drawnCards.push(card);
             clickCount++;
 
-            deckStatus.textContent = `カードを引いてください (${clickCount} / ${maxDraws}枚)`;
+            deckStatus.textContent = `カードを引いています (${clickCount} / ${maxDraws}枚)`;
 
             const numMatch = card.name.match(/^(\d+)\.\s*(.+)$/);
             const cardNumStr = numMatch ? numMatch[1] : card.number;
@@ -424,13 +406,15 @@
             `;
             cardsDisplay.appendChild(cardEl);
 
+            // 1枚以上引いた時点で、いつでもAI鑑定ボタンを押せるように有効化
             if (clickCount > 0) {
                 aiReadingBtn.disabled = false;
             }
 
+            // 3枚に達したら山札をクリックできないようにする
             if (clickCount >= maxDraws) {
                 deckBtn.style.pointerEvents = 'none';
-                deckStatus.textContent = `指定枚数（${maxDraws}枚）を引き終わりました`;
+                deckStatus.textContent = `最大枚数（${maxDraws}枚）に達しました`;
             }
         });
 
@@ -462,7 +446,6 @@
                 '\n✨ Gemini AIが心を込めて鑑定しています...しばらくお待ちください ✨';
             resultBox.scrollIntoView({ behavior: 'smooth' });
 
-            // ② プロンプト内に占い師の名前（セレスティア）を定義
             const prompt = `こんにちは、数秘タロット占い師のセレスティアです。以下の相談内容と、ユーザーが引いた${drawnCards.length}枚の数秘タロットカードの情報を元に、深みと洞察力のある詳細な鑑定文を作成してください。
 
 【相談内容・テーマ】
@@ -472,7 +455,7 @@ ${consultation}
 ${cardsPromptText}
 
 【鑑定の構成案】
-1. セレスティアからのご挨拶と、引いたカードが揃ったことの象徴的な全体インプレッション
+1. セレスティアからのご挨拶と、引いた${drawnCards.length}枚のカードが持つ象徴的な全体インプレッション
 2. 各カードの深い読み解き
 3. 相談者への具体的なアドバイスとあたたかいエール
 

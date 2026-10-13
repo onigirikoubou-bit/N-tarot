@@ -439,8 +439,8 @@ ${consultation}
 専門的でありながら、相談者の心に寄り添うような、神秘的で優雅なトーンで日本語で回答してください。`;
 
             try {
-                // サーバーの /api/reading エンドポイントに POST リクエストを送信
-                const response = await fetch('/api/reading', {
+                // Render上のサーバーのURLを指定してリクエストを送信
+                const response = await fetch('https://n-tarot.onrender.com/api/reading', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'

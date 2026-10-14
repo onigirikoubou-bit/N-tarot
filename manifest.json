@@ -1,7 +1,7 @@
 {
   "name": "数秘タロット鑑定アプリ",
   "short_name": "数秘タロット",
-  "start_url": "/",
+  "start_url": "./index.html",
   "display": "standalone",
   "background_color": "#e8f4f1",
   "theme_color": "#2c3e50",

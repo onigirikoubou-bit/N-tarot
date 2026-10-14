@@ -4,12 +4,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>数秘タロット鑑定アプリ</title>
+    <!-- 神秘的なフォントとゴシック体の読み込み -->
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Noto+Sans+JP:wght@400;700&family=Noto+Serif+JP:wght@400;600&display=swap" rel="stylesheet">
     <!-- スマホやブラウザ用のアイコン設定 -->
     <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
     <link rel="apple-touch-icon" sizes="180x180" href="icon-512.png">
     <link rel="manifest" href="manifest.json">
-    <!-- 神秘的なフォントとゴシック体の読み込み -->
-    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Noto+Sans+JP:wght@400;700&family=Noto+Serif+JP:wght@400;600&display=swap" rel="stylesheet">
     <style>
         body {
             font-family: 'Noto Serif JP', serif;
@@ -249,6 +249,67 @@
             font-size: 16px;
             color: #334155;
         }
+
+        /* 履歴エリアのスタイル */
+        .history-container {
+            width: 100%;
+            margin-top: 30px;
+            background: #ffffff;
+            border: 1px solid #cbd5e1;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+        }
+        .history-container h2 {
+            margin-top: 0;
+            font-family: 'Cinzel', serif;
+            color: #34495e;
+            font-size: 16px;
+            border-bottom: 1px solid #e2e8f0;
+            padding-bottom: 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .history-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+            max-height: 250px;
+            overflow-y: auto;
+        }
+        .history-item {
+            padding: 10px 12px;
+            border-bottom: 1px solid #f1f5f9;
+            cursor: pointer;
+            transition: background 0.2s;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 13px;
+        }
+        .history-item:hover {
+            background: #f8fafc;
+        }
+        .history-item-title {
+            font-weight: 600;
+            color: #1e293b;
+        }
+        .history-item-date {
+            color: #64748b;
+            font-size: 11px;
+        }
+        .clear-history-btn {
+            background: none;
+            border: none;
+            color: #ef4444;
+            font-size: 12px;
+            cursor: pointer;
+            font-family: 'Noto Serif JP', serif;
+        }
+        .clear-history-btn:hover {
+            text-decoration: underline;
+        }
     </style>
 </head>
 <body>
@@ -302,6 +363,17 @@
         <div class="result-content" id="result-display">鑑定中...</div>
     </div>
 
+    <!-- 鑑定履歴リストエリア -->
+    <div class="history-container" id="history-box">
+        <h2>
+            <span>鑑定履歴 (最大10件)</span>
+            <button class="clear-history-btn" id="clear-history-btn">履歴をクリア</button>
+        </h2>
+        <ul class="history-list" id="history-list">
+            <li style="padding: 12px; color: #94a3b8; text-align: center; font-size: 13px;">まだ履歴はありません</li>
+        </ul>
+    </div>
+
     <script>
         const tarotData = [
             { number: 0, name: "0. 虚空 / 始まり", colorClass: "color-blue", bg: "linear-gradient(135deg, #e0f2fe 0%, #bae6fd 100%)", keywords: ["無限の可能性", "純粋無垢", "自由", "スタートライン"], meaning: "すべての可能性を秘めたゼロの状態。固定観念を手放し、純粋な気持ちで新しい一歩を踏み出す時です。" },
@@ -342,7 +414,7 @@
 
         let drawnCards = [];
         let clickCount = 0;
-        const maxDraws = 3; // 最大3枚まで
+        const maxDraws = 3;
         let shuffledDeck = [];
 
         const appTitle = document.getElementById('app-title');
@@ -354,8 +426,10 @@
         const aiReadingBtn = document.getElementById('ai-reading-btn');
         const resultBox = document.getElementById('result-box');
         const resultDisplay = document.getElementById('result-display');
+        const historyList = document.getElementById('history-list');
+        const clearHistoryBtn = document.getElementById('clear-history-btn');
 
-        // タイトルをクリックしたら初期状態（リセット）にする
+        // タイトルをクリックしたら初期状態（リセット）に
         appTitle.addEventListener('click', () => {
             consultationSelect.value = "過去・現在・未来";
             customGroup.classList.add('hidden');
@@ -392,36 +466,130 @@
 
             deckStatus.textContent = `カードを引いています (${clickCount} / ${maxDraws}枚)`;
 
-            const numMatch = card.name.match(/^(\d+)\.\s*(.+)$/);
-            const cardNumStr = numMatch ? numMatch[1] : card.number;
-            const cardTitleStr = numMatch ? numMatch[2] : card.name;
+            renderCards();
 
-            const cardEl = document.createElement('div');
-            cardEl.className = 'tarot-card';
-            cardEl.innerHTML = `
-                <div class="card-illust-frame" style="background: ${card.bg};">
-                    <div class="card-number ${card.colorClass}">${cardNumStr}</div>
-                </div>
-                <div class="card-title">${cardTitleStr}</div>
-                <div class="card-details">
-                    <p style="margin: 4px 0;"><strong>キーワード:</strong> <span class="card-keywords">${card.keywords.join(', ')}</span></p>
-                    <p style="margin: 4px 0;">${card.meaning}</p>
-                </div>
-            `;
-            cardsDisplay.appendChild(cardEl);
-
-            // 1枚以上引いた時点で、いつでもAI鑑定ボタンを押せるように有効化
             if (clickCount > 0) {
                 aiReadingBtn.disabled = false;
             }
 
-            // 3枚に達したら山札をクリックできないようにする
             if (clickCount >= maxDraws) {
                 deckBtn.style.pointerEvents = 'none';
                 deckStatus.textContent = `最大枚数（${maxDraws}枚）に達しました`;
             }
         });
 
+        // カードの描画関数
+        function renderCards() {
+            cardsDisplay.innerHTML = '';
+            drawnCards.forEach(card => {
+                const numMatch = card.name.match(/^(\d+)\.\s*(.+)$/);
+                const cardNumStr = numMatch ? numMatch[1] : card.number;
+                const cardTitleStr = numMatch ? numMatch[2] : card.name;
+
+                const cardEl = document.createElement('div');
+                cardEl.className = 'tarot-card';
+                cardEl.innerHTML = `
+                    <div class="card-illust-frame" style="background: ${card.bg};">
+                        <div class="card-number ${card.colorClass}">${cardNumStr}</div>
+                    </div>
+                    <div class="card-title">${cardTitleStr}</div>
+                    <div class="card-details">
+                        <p style="margin: 4px 0;"><strong>キーワード:</strong> <span class="card-keywords">${card.keywords.join(', ')}</span></p>
+                        <p style="margin: 4px 0;">${card.meaning}</p>
+                    </div>
+                `;
+                cardsDisplay.appendChild(cardEl);
+            });
+        }
+
+        // --- 履歴機能関連 ---
+        function saveHistory(consultation, cards, aiText) {
+            let history = JSON.parse(localStorage.getItem('tarot_history')) || [];
+            
+            const newItem = {
+                date: new Date().toLocaleDateString('ja-JP', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }),
+                consultation: consultation,
+                cards: cards,
+                aiText: aiText
+            };
+
+            history.unshift(newItem); // 先頭に追加
+            if (history.length > 10) {
+                history = history.slice(0, 10); // 最大10件まで保持
+            }
+
+            localStorage.setItem('tarot_history', JSON.stringify(history));
+            loadHistory();
+        }
+
+        function loadHistory() {
+            let history = JSON.parse(localStorage.getItem('tarot_history')) || [];
+            historyList.innerHTML = '';
+
+            if (history.length === 0) {
+                historyList.innerHTML = '<li style="padding: 12px; color: #94a3b8; text-align: center; font-size: 13px;">まだ履歴はありません</li>';
+                return;
+            }
+
+            history.forEach((item, index) => {
+                // 札の番号を抽出してカンマ等で繋ぐ（例: [ 3, 11, 22 ]）
+                const cardNumbers = item.cards.map(c => {
+                    const m = c.name.match(/^(\d+)\./);
+                    return m ? m[1] : c.number;
+                }).join(' / ');
+
+                const li = document.createElement('li');
+                li.className = 'history-item';
+                li.innerHTML = `
+                    <div>
+                        <span class="history-item-title">[ ${cardNumbers} ] ${item.consultation}</span>
+                    </div>
+                    <span class="history-item-date">${item.date}</span>
+                `;
+
+                // 履歴をクリックしたときの処理
+                li.addEventListener('click', () => {
+                    restoreHistoryItem(item);
+                });
+
+                historyList.appendChild(li);
+            });
+        }
+
+        function restoreHistoryItem(item) {
+            // カード情報と画面の状態を復元
+            drawnCards = item.cards;
+            clickCount = drawnCards.length;
+            renderCards();
+
+            deckBtn.style.pointerEvents = 'none';
+            deckStatus.textContent = `過去の履歴を表示中（${clickCount}枚）`;
+            aiReadingBtn.disabled = false;
+
+            // 結果エリアに表示
+            let cardsInfoText = '';
+            drawnCards.forEach((card, index) => {
+                cardsInfoText += `${index + 1}枚目: ${card.name}\n`;
+            });
+
+            resultBox.classList.remove('hidden');
+            resultDisplay.textContent = '【ご相談・テーマ】\n' + item.consultation + '\n\n' +
+                '【引いた数秘タロットカード】\n' + cardsInfoText +
+                '━━━━━━━━━━━━━━━━━━━\n' +
+                '🔮 Gemini AI タロット鑑定結果（保存された履歴）\n' +
+                '━━━━━━━━━━━━━━━━━━━\n\n' + item.aiText;
+
+            resultBox.scrollIntoView({ behavior: 'smooth' });
+        }
+
+        clearHistoryBtn.addEventListener('click', () => {
+            if (confirm('すべての鑑定履歴を削除しますか？')) {
+                localStorage.removeItem('tarot_history');
+                loadHistory();
+            }
+        });
+
+        // AI鑑定ボタンクリック処理
         aiReadingBtn.addEventListener('click', async () => {
             if (drawnCards.length === 0) {
                 alert('カードを1枚以上引いてください。');
@@ -488,12 +656,17 @@ ${cardsPromptText}
                     '🔮 Gemini AI タロット鑑定結果\n' +
                     '━━━━━━━━━━━━━━━━━━━\n\n' + aiText;
 
+                // 履歴に保存してリストを更新
+                saveHistory(consultation, drawnCards, aiText);
+
             } catch (error) {
                 resultDisplay.textContent = 'エラーが発生しました: ' + error.message;
             }
         });
 
+        // 初期化実行
         initDeck();
+        loadHistory();
     </script>
 
 </body>

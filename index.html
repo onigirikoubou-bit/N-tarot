@@ -353,6 +353,11 @@
             font-weight: 600;
             color: #1e293b;
         }
+        .history-item-mode {
+            color: #64748b;
+            font-weight: normal;
+            font-size: 12px;
+        }
         .history-item-date {
             color: #64748b;
             font-size: 11px;
@@ -504,7 +509,6 @@
         const tabRandom = document.getElementById('tab-random');
         const tabManual = document.getElementById('tab-manual');
         const manualSelectBox = document.getElementById('manual-select-box');
-        const leftAreaRandom = document.getElementById('left-area-random');
         const numberGrid = document.getElementById('number-grid');
         const manualDecideBtn = document.getElementById('manual-decide-btn');
 
@@ -570,7 +574,6 @@
                 return;
             }
 
-            // 選択された数字順にtarotDataからカードオブジェクトを取得
             drawnCards = manualSelectedNumbers.map(num => tarotData.find(t => t.number === num));
             renderCards();
 
@@ -662,14 +665,15 @@
         }
 
         // --- 履歴機能関連 ---
-        function saveHistory(consultation, cards, aiText) {
+        function saveHistory(consultation, cards, aiText, mode) {
             let history = JSON.parse(localStorage.getItem('tarot_history')) || [];
             
             const newItem = {
                 date: new Date().toLocaleDateString('ja-JP', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }),
                 consultation: consultation,
                 cards: cards,
-                aiText: aiText
+                aiText: aiText,
+                mode: mode // 'random' または 'manual' を保存
             };
 
             history.unshift(newItem); // 先頭に追加
@@ -696,11 +700,15 @@
                     return m ? m[1] : c.number;
                 }).join(' / ');
 
+                // モードの表記を分岐（デフォルトで古いデータにモードがない場合はランダム扱い）
+                const modeLabel = item.mode === 'manual' ? '数字選択' : 'ランダムドロー';
+
                 const li = document.createElement('li');
                 li.className = 'history-item';
                 li.innerHTML = `
                     <div>
                         <span class="history-item-title">[ ${cardNumbers} ] ${item.consultation}</span>
+                        <span class="history-item-mode">（${modeLabel}）</span>
                     </div>
                     <span class="history-item-date">${item.date}</span>
                 `;
@@ -718,12 +726,7 @@
             clickCount = drawnCards.length;
             renderCards();
 
-            if (currentMode === 'random') {
-                deckBtn.style.pointerEvents = 'none';
-                deckStatus.textContent = `過去の履歴を表示中（${clickCount}枚）`;
-            } else {
-                deckStatus.textContent = `過去の履歴を表示中（${clickCount}枚）`;
-            }
+            deckStatus.textContent = `過去の履歴を表示中（${clickCount}枚）`;
             aiReadingBtn.disabled = false;
 
             let cardsInfoText = '';
@@ -731,8 +734,10 @@
                 cardsInfoText += `${index + 1}枚目: ${card.name}\n`;
             });
 
+            const modeLabel = item.mode === 'manual' ? '数字選択' : 'ランダムドロー';
+
             resultBox.classList.remove('hidden');
-            resultDisplay.textContent = '【ご相談・テーマ】\n' + item.consultation + '\n\n' +
+            resultDisplay.textContent = '【ご相談・テーマ】\n' + item.consultation + `（${modeLabel}）\n\n` +
                 '【引いた数秘タロットカード】\n' + cardsInfoText +
                 '━━━━━━━━━━━━━━━━━━━\n' +
                 '🔮 Gemini AI タロット鑑定結果（保存された履歴）\n' +
@@ -773,16 +778,18 @@
                 cardsPromptText += `${index + 1}枚目: ${card.name}\n- キーワード: ${card.keywords.join(', ')}\n- 意味: ${card.meaning}\n\n`;
             });
 
-            resultDisplay.textContent = '【ご相談・テーマ】\n' + consultation + '\n\n【引いた数秘タロットカード】\n' + cardsInfoText +
+            const modeTextLabel = currentMode === 'manual' ? '数字選択' : 'ランダムドロー';
+
+            resultDisplay.textContent = '【ご相談・テーマ】\n' + consultation + `（${modeTextLabel}）\n\n【引いた数秘タロットカード】\n` + cardsInfoText +
                 '\n✨ Gemini AIが心を込めて鑑定しています...しばらくお待ちください ✨';
             resultBox.scrollIntoView({ behavior: 'smooth' });
 
-            const prompt = `こんにちは、数秘タロット占い師のセレスティアです。以下の相談内容と、ユーザーが選択した${drawnCards.length}枚の数秘タロットカードの情報を元に、深みと洞察力のある詳細な鑑定文を作成してください。
+            const prompt = `こんにちは、数秘タロット占い師のセレスティアです。以下の相談内容と、ユーザーが選んだ${drawnCards.length}枚の数秘タロットカードの情報を元に、深みと洞察力のある詳細な鑑定文を作成してください。
 
 【相談内容・テーマ】
-${consultation}
+${consultation}（${modeTextLabel}）
 
-【選択されたカード情報】
+【カード情報】
 ${cardsPromptText}
 
 【鑑定の構成案】
@@ -809,13 +816,14 @@ ${cardsPromptText}
 
                 const aiText = data.candidates?.[0]?.content?.parts?.[0]?.text || '鑑定結果を取得できませんでした。';
 
-                resultDisplay.textContent = '【ご相談・テーマ】\n' + consultation + '\n\n' +
+                resultDisplay.textContent = '【ご相談・テーマ】\n' + consultation + `（${modeTextLabel}）\n\n` +
                     '【引いた数秘タロットカード】\n' + cardsInfoText +
                     '━━━━━━━━━━━━━━━━━━━\n' +
                     '🔮 Gemini AI タロット鑑定結果\n' +
                     '━━━━━━━━━━━━━━━━━━━\n\n' + aiText;
 
-                saveHistory(consultation, drawnCards, aiText);
+                // 履歴に現在のモード（currentMode）も一緒に保存
+                saveHistory(consultation, drawnCards, aiText, currentMode);
 
             } catch (error) {
                 resultDisplay.textContent = 'エラーが発生しました: ' + error.message;
